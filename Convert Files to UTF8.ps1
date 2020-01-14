@@ -1,0 +1,1 @@
+gci -File -Recurse | ? Extension -In @('.sql') | % { $body = $_ | gc -Raw; $body | Set-Content -Encoding utf8 -NoNewline; }
