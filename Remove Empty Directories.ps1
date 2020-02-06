@@ -1,0 +1,1 @@
+gci -Path $folder -Directory -Recurse | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse;
