@@ -2,11 +2,11 @@
 # move files to new directory for renaming
 ##########################################################
 # get rid of any files that aren't needed
-gci -Recurse -File -Path X:\Downloads\Completed -Include @('*.txt','*jpg','*.exe','*.nfo') | rm -Verbose;
+gci -Recurse -File -Path X:\Downloads\Completed -Include @('*.txt','*jpg','*.exe','*.nfo') | rm -Force -Verbose;
 # move files to a prep directory
-gci -Recurse -File -Path X:\Downloads\Completed | mv -Destination X:\Downloads\ReadyToCopy  -Verbose;
+gci -Recurse -File -Path X:\Downloads\Completed | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
 # clean out empty directories
-gci -Recurse -Directory -Path $folder | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Verbose;
+gci -Recurse -Directory -Path $folder | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Force -Verbose;
 ##########################################################
 
 ##########################################################
