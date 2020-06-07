@@ -2,11 +2,11 @@
 # move files to new directory for renaming
 ##########################################################
 # get rid of any files that aren't needed
-gci -Recurse -File -Path X:\Downloads\Completed -Include @('*.txt','*jpg','*.exe','*.nfo','*.sfv','*.bat','*.cmd','*.com','*.msi','*.ps1') | rm -Force -Verbose;
+gci -Recurse -File -Path X:\Downloads\temp -Include @('*.txt','*jpg','*.exe','*.nfo','*.sfv','*.bat','*.cmd','*.com','*.msi','*.ps1') | rm -Force -Verbose;
 # move files to a prep directory
-gci -Recurse -File -Path X:\Downloads\Completed | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
+gci -Recurse -File -Path X:\Downloads\temp | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
 # clean out empty directories
-gci -Recurse -Directory -Path X:\Downloads\Completed | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Force -Verbose;
+gci -Recurse -Directory -Path X:\Downloads\temp | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Force -Verbose;
 ##########################################################
 pause;
 ##########################################################
@@ -16,10 +16,7 @@ gci -File | ? Name -NotLike '* ([0-9][0-9][0-9][0-9]).*' | % {
 	$_.Name;
 
 	# If for some reason an error occurs in the previous loop, I want to make sure I staart clean every time
-	Clear-Variable -Name match -ErrorAction SilentlyContinue;
-	Clear-Variable -Name idxYear -ErrorAction SilentlyContinue;
-	Clear-Variable -Name newName -ErrorAction SilentlyContinue;
-	Clear-Variable -Name Matches -ErrorAction SilentlyContinue;
+	Clear-Variable -Name match,idxYear,newName,Matches -ErrorAction SilentlyContinue;
 
 	# Find the position of the year in the title
     $match = $_.BaseName -match '[0-9]{4}';
@@ -32,6 +29,7 @@ gci -File | ? Name -NotLike '* ([0-9][0-9][0-9][0-9]).*' | % {
 	} ElseIf (!$match) {
 		Write-Host ('Year not found in title, skipping...')
 		return;
+	# This is a best attempt case...obviously it will still have issues with movies like 1984, 2012, 1917
 	} ElseIf (($Matches[0] -lt 1900) -or ($Matches[0] -gt 2050)) {
 		Write-Host ('Year not found in title, skipping...')
 		return;
@@ -87,10 +85,7 @@ ForEach ($file in $files) {
         # if the Relased date is populated, then use it for the filename
         if ($result.y) {
 			# Clear variables at the beginning of each loop just in case any errors occur and residual values aren't hanging around
-			Clear-Variable -Name baseName -ErrorAction SilentlyContinue;
-			Clear-Variable -Name movieYear -ErrorAction SilentlyContinue;
-			Clear-Variable -Name newName -ErrorAction SilentlyContinue;
-			Clear-Variable -Name renameResponse -ErrorAction SilentlyContinue;
+			Clear-Variable -Name baseName,movieYear,newName,renameResponse -ErrorAction SilentlyContinue;
 			
 			# get the movie name from the results
             $baseName = $result.l;
