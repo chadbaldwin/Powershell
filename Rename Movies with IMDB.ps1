@@ -2,31 +2,43 @@
 # move files to new directory for renaming
 ##########################################################
 # get rid of any files that aren't needed
-gci -Recurse -File -Path X:\Downloads\Completed -Include @('*.txt','*jpg','*.exe','*.nfo') | rm -Force -Verbose;
+gci -Recurse -File -Path X:\Downloads\Completed -Include @('*.txt','*jpg','*.exe','*.nfo','*.sfv','*.bat','*.cmd','*.com','*.msi','*.ps1') | rm -Force -Verbose;
 # move files to a prep directory
 gci -Recurse -File -Path X:\Downloads\Completed | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
 # clean out empty directories
-gci -Recurse -Directory -Path $folder | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Force -Verbose;
+gci -Recurse -Directory -Path X:\Downloads\Completed | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Force -Verbose;
 ##########################################################
-
+pause;
 ##########################################################
 # remove garbage from movie file names -- ignoring TV show files
 ##########################################################
 gci -File | ? Name -NotLike '* ([0-9][0-9][0-9][0-9]).*' | % {
+	$_.Name;
+
 	# If for some reason an error occurs in the previous loop, I want to make sure I staart clean every time
 	Clear-Variable -Name match -ErrorAction SilentlyContinue;
 	Clear-Variable -Name idxYear -ErrorAction SilentlyContinue;
 	Clear-Variable -Name newName -ErrorAction SilentlyContinue;
+	Clear-Variable -Name Matches -ErrorAction SilentlyContinue;
 
-	# If the current file is a TV episode, just skip it
-    If ($_.BaseName -match '[Ss][0-9][0-9][Ee][0-9][0-9]') {
-		Write-Host ('TV Episode. Skipping ' + $_.Name);
-        return;
-    }
+	# Find the position of the year in the title
+    $match = $_.BaseName -match '[0-9]{4}';
 
-    # Find the position of the year in the title...KNOWN ISSUE - Movies whose name IS a year...example movies "1922 (2017)" or "2012 (2009)"
-    $match = $_.BaseName -match '[0-9][0-9][0-9][0-9]';
-    $idxYear = $_.BaseName.IndexOf($matches[0]);
+    # If the current file is a TV episode, just skip it
+	If ($_.BaseName -match '[Ss][0-9][0-9][Ee][0-9][0-9]') {
+		Write-Host ('TV Episode. Moving ' + $_.Name);
+		$_ | mv -Destination .\TV
+		return;
+	} ElseIf (!$match) {
+		Write-Host ('Year not found in title, skipping...')
+		return;
+	} ElseIf (($Matches[0] -lt 1900) -or ($Matches[0] -gt 2050)) {
+		Write-Host ('Year not found in title, skipping...')
+		return;
+	}
+
+	$year = $matches[0];
+	$idxYear = $_.BaseName.IndexOf($matches[0]);
 
     # Remove everything after the year, remove any unwanted characters or extra spaces and rename the file to "movie title (year).ext"
 	$newName = $_.BaseName.SubString(0,$idxYear);
@@ -37,24 +49,24 @@ gci -File | ? Name -NotLike '* ([0-9][0-9][0-9][0-9]).*' | % {
 	$_ | ren -NewName $newName -Confirm -Verbose;
 }
 ##########################################################
-
+pause;
 ##########################################################
 # Rename all files in the current directory using IMDB
 
 # To be run within the directory of the movie files that need to be renamed.
 ##########################################################
-$files = Get-ChildItem -File -Recurse;
+$files = Get-ChildItem -File;
 
 ForEach ($file in $files) {
-	Write-Output '';
-    Write-Output ('Current File: '+$file.FullName);
+	#Write-Output '';
+    #Write-Output ('Current File: '+$file.FullName);
 	
 	# cleanup the file name before searching (make it URL safe)
 	$searchName = $file.BaseName -replace '[()]',' ' -replace '\s+',' ';
 	$searchName = $searchName.Trim();
 
     # search movie data from IMDB
-	Write-Output ('Searching IMDB: '+$searchName.Replace(' ','+'));
+	#Write-Output ('Searching IMDB: '+$searchName.Replace(' ','+'));
     $searchResult = Invoke-RestMethod -Uri ('https://v2.sg.media-imdb.com/suggestion/'+$searchName.SubString(0,1).ToLower()+'/'+$searchName.Replace(' ','+')+'.json');
 
 	# Older API
@@ -62,6 +74,7 @@ ForEach ($file in $files) {
     #$searchResult = $content.Substring($content.IndexOf('(')+1, $content.Length-$content.IndexOf('(')-2) | ConvertFrom-Json; # IMDB uses 
 
     if ($null -eq $searchResult.d) {
+		Write-Output ('Current File: '+$file.FullName);
         Write-Output 'Error: No search results';
         Continue;
     }
@@ -96,10 +109,11 @@ ForEach ($file in $files) {
 			# if new and old name are the same, then skip
 			if ($file.Name -eq $newName) {
 				if ($file.Name -cne $newName) {
+					Write-Output ('Current File: '+$file.FullName);
 					Write-Output 'New and old name are the same but different case...Fixing case...';
 					$file | Rename-Item -NewName $newName;
 				} else {
-					Write-Output 'New and old name are the same, skipping...';
+					#Write-Output 'New and old name are the same, skipping...';
 				};
 				Break;
 			};
@@ -116,7 +130,17 @@ ForEach ($file in $files) {
             if ($renameResponse -eq 'x') { Break; }
             if ($renameResponse -eq 'y') { $file | Rename-Item -NewName $newName; Break; }
         } else {
+			Write-Output ('Current File: '+$file.FullName);
             Write-Output ('Error: Year not populated: ' + $result.y);
         }
     }
 }
+##########################################################
+pause;
+##########################################################
+# Check for duplicate movies
+##########################################################
+$movies = gci -Path X:\Movies\ -Recurse -File | ? Extension -NE '.srt';
+$movies += gci -File;
+$dups = ($movies | ? Extension -NE '.srt' | group -Property BaseName | ? Count -GT 1).Group;
+$dups | select Directory, Name, Length;
