@@ -6,7 +6,7 @@ gci -Recurse -File -Path X:\Downloads\temp -Include @('*.txt','*jpg','*.exe','*.
 # move files to a prep directory
 gci -Recurse -File -Path X:\Downloads\temp | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
 # clean out empty directories
-gci -Recurse -Directory -Path X:\Downloads\temp | ? {-Not $_.GetFiles("*","AllDirectories")} | rm -Recurse -Force -Verbose;
+gci -Recurse -Directory -Path X:\Downloads\temp | ? { -Not $_.GetFiles("*","AllDirectories") } | rm -Recurse -Force -Verbose;
 ##########################################################
 pause;
 ##########################################################
@@ -38,7 +38,7 @@ Get-ChildItem -File | Where-Object Name -NotLike '* ([0-9][0-9][0-9][0-9]).*' | 
     $idxYear = $_.BaseName.IndexOf($matches[0]);
 
     # Remove everything after the year, remove any unwanted characters or extra spaces and rename the file to "movie title (year).ext"
-    $newName = $_.BaseName.SubString(0, $idxYear);
+    $newName = $_.BaseName.SubString(0,$idxYear);
     $newName = $newName -replace '[\[\]{}()-.,]',' ' -replace '\s+', ' ';
     $newName = $newName.Trim();
     $newName = "$newName ($($matches[0]))$($_.Extension)";
@@ -53,6 +53,7 @@ pause;
 # To be run within the directory of the movie files that need to be renamed.
 ##########################################################
 $files = Get-ChildItem -File;
+
 ForEach ($file in $files) {
     # cleanup the file name before searching (make it URL safe)
     $searchName = $file.BaseName -replace '[()]',' ' -replace '\s+',' ';
@@ -67,8 +68,10 @@ ForEach ($file in $files) {
         Continue;
     }
 
-    $movieData = $searchResult.d;
+    $movieData = $searchResult.d; # Add smarts to put priority on the year
     
+    # todo - Add a check to see if any results match filename exactly (case-sensitive)
+
     ForEach ($result in $movieData) {
         # if the Relased date is populated, then use it for the filename
         if ($result.y) {
@@ -79,20 +82,19 @@ ForEach ($file in $files) {
             $baseName = $result.l;
 
             # cleanup - unwanted characters, extra spaces, etc
-            $baseName = $baseName -replace '&', 'and';
-            $baseName = $baseName -replace '[^A-Za-z0-9 ()\-]', '';
-            $baseName = $baseName.Trim() -replace '\s+', ' ';
+            $baseName = $baseName -replace '&','and' -replace '[^A-Za-z0-9 ()\-]','' -replace '\s+',' ';
+            $baseName = $baseName.Trim();
 
             # get movie year
             $movieYear = $result.y;
 
             # build new file name
-            $newName = "$baseName ($movieYear) {imdb-$($result.id)} $($file.Extension)";
+            $newName = "$baseName ($movieYear)$($file.Extension)";
             
             # if new and old name are the same, then skip
             if ($file.Name -eq $newName) {
                 if ($file.Name -cne $newName) {
-                    Write-Output ('Current File: '+$file.FullName);
+                    Write-Output ("Current File: $($file.FullName)");
                     Write-Output 'New and old name are the same but different case...Fixing case...';
                     $file | Rename-Item -NewName $newName;
                 } else {
@@ -101,20 +103,18 @@ ForEach ($file in $files) {
                 Break;
             };
 
-            Write-Output ('Old Name: '+$file.Name);
-            Write-Output ('New Name: '+$newName);
-            
-            # output list of actor names
-            $result.s;
+            # output useful info for making rename decision
+            Write-Output ("Old Name: $($file.Name)");
+            Write-Output ("New Name: $newName");
+            Write-Output ("Actors: $($result.s)");
 
             # rename the file
             $renameResponse = Read-Host -Prompt 'Rename file (y/n), Skip (x)';
-
             if ($renameResponse -eq 'x') { Break; }
             if ($renameResponse -eq 'y') { $file | Rename-Item -NewName $newName; Break; }
         } else {
-            Write-Output ('Current File: '+$file.FullName);
-            Write-Output ('Error: Year not populated: ' + $result.y);
+            Write-Output ("Current File: $($file.FullName)");
+            Write-Output ("Error: Year not populated: $($result.y)");
         }
     }
 }
