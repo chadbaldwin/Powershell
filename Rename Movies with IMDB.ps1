@@ -1,3 +1,34 @@
+function Get-CleanMovieName {
+    param (
+        [Parameter(ValueFromPipeline)][string]$Path
+    )
+    process {
+        $name = Split-Path -Path $Path -LeafBase;
+        $ext = Split-Path -Path $Path -Extension;
+
+        # Find the position of the year in the title
+        $match = $name -match '\d{4}';
+        $year = $match ? $Matches[0] : $null;
+
+        # If the current file is a TV episode, just skip it
+        If ($name -imatch 'S\d\dE\d\d') {
+            Write-Error 'TV Episode' -TargetObject $Path;
+            return;
+        } ElseIf ((!$match) -or ($year -lt 1900) -or ($year -gt 2050)) {
+            # This is a best attempt case...obviously it will still have issues with movies like 1984, 2012, 1917
+            Write-Error 'Year not found in title' -TargetObject $Path;
+            return;
+        }
+
+        # Remove everything after the year, remove any unwanted characters or extra spaces and rename the file to "movie title (year).ext"
+        $newName = $name.SubString(0, $name.IndexOf($year));
+        $newName = $newName -replace '[\[\]{}()-.,]',' ' -replace '\s+',' ';
+        $newName = $newName.Trim();
+
+        return "${newName} (${year})${ext}";
+    }
+}
+
 ##########################################################
 # move files to new directory for renaming
 ##########################################################
@@ -13,39 +44,7 @@ pause;
 ##########################################################
 # remove garbage from movie file names -- ignoring TV show files
 ##########################################################
-Get-ChildItem -File | Where-Object Name -NotLike '* ([0-9][0-9][0-9][0-9]).*' | ForEach-Object {
-    $_.Name;
-
-    # If for some reason an error occurs in the previous loop, I want to make sure I staart clean every time
-    Clear-Variable -Name match,idxYear,newName,Matches -ErrorAction SilentlyContinue;
-
-    # Find the position of the year in the title
-    $match = $_.BaseName -match '[0-9]{4}';
-
-    # If the current file is a TV episode, just skip it
-    If ($_.BaseName -match '[Ss][0-9][0-9][Ee][0-9][0-9]') {
-        Write-Host ('TV Episode. Moving ' + $_.Name);
-        $_ | Move-Item -Destination .\TV
-        return;
-    } ElseIf (!$match) {
-        Write-Host ('Year not found in title, skipping...')
-        return;
-    # This is a best attempt case...obviously it will still have issues with movies like 1984, 2012, 1917
-    } ElseIf (($Matches[0] -lt 1900) -or ($Matches[0] -gt 2050)) {
-        Write-Host ('Year not found in title, skipping...')
-        return;
-    }
-
-    $idxYear = $_.BaseName.IndexOf($matches[0]);
-
-    # Remove everything after the year, remove any unwanted characters or extra spaces and rename the file to "movie title (year).ext"
-    $newName = $_.BaseName.SubString(0,$idxYear);
-    $newName = $newName -replace '[\[\]{}()-.,]',' ' -replace '\s+', ' ';
-    $newName = $newName.Trim();
-    $newName = "$newName ($($matches[0]))$($_.Extension)";
-    
-    $_ | Rename-Item -NewName $newName -Confirm -Verbose;
-}
+gci | % { Rename-Item -Path $_ -NewName (Get-CleanMovieName $_) } 
 ##########################################################
 pause;
 ##########################################################
