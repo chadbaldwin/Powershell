@@ -1,12 +1,13 @@
 ##########################################################
 # move files to new directory for renaming
 ##########################################################
+$source = gi 'X:\Downloads\Completed\';
 # get rid of any files that aren't needed
-gci -Recurse -File -Path X:\Downloads\temp -Include @('*.txt','*jpg','*.exe','*.nfo','*.sfv','*.bat','*.cmd','*.com','*.msi','*.ps1') | rm -Force -Verbose;
+gci -Recurse -File -Path $source -Include @('*.txt','*jpg','*.exe','*.nfo','*.sfv','*.bat','*.cmd','*.com','*.msi','*.ps1') | rm -Force -Verbose;
 # move files to a prep directory
-gci -Recurse -File -Path X:\Downloads\temp | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
+gci -Recurse -File -Path $source | mv -Destination X:\Downloads\ReadyToCopy -Verbose;
 # clean out empty directories
-gci -Recurse -Directory -Path X:\Downloads\temp | ? { -Not $_.GetFiles("*","AllDirectories") } | rm -Recurse -Force -Verbose;
+gci -Recurse -Directory -Path $source | ? { -Not $_.GetFiles("*","AllDirectories") } | rm -Recurse -Force -Verbose;
 ##########################################################
 pause;
 ##########################################################
