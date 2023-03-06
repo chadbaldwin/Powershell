@@ -19,11 +19,11 @@
 
 $commitdate = $null
 
-git log --name-only --pretty=format:"~~~%aI" --since="3 years ago" `
+git log --name-only --pretty=format:"~~~%aI" --since="4 years ago" `
   | ? { $_ } -PV line <# remove blank lines #>`
   | % { <# parse lines #>
       if ($line -match '^~~~') {
-        $commitdate = [datetime]($line -replace '~~~')
+        $commitdate = [datetime]($line -replace '^~~~')
         return
       }
       [pscustomobject]@{
@@ -33,11 +33,10 @@ git log --name-only --pretty=format:"~~~%aI" --since="3 years ago" `
     } `
   | group filepath `
   | % { $_.Group | sort commitdate -Desc -Top 1 } `
+  | ? { Test-Path -LiteralPath $_.filepath } `
   | % {
-      if (Test-Path -LiteralPath $_.filepath) {
-        $_.filepath
-        (gi -LiteralPath $_.filepath).LastWriteTime = $_.commitdate
-      }
+      $_.filepath
+      (gi -LiteralPath $_.filepath).LastWriteTime = $_.commitdate
     }
 ###############################################
 
