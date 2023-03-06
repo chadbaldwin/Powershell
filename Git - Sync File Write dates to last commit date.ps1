@@ -19,7 +19,7 @@
 
 $commitdate = $null
 
-git log --name-only --pretty=format:"~~~%aI" --since="4 years ago" `
+git log --name-only --pretty=format:'~~~%aI' --since='4 years ago' `
   | ? { $_ } -PV line <# remove blank lines #> `
   | % { <# parse lines #>
       if ($line -match '^~~~') {
