@@ -20,24 +20,18 @@
 $commitdate = $null
 
 git log --name-only --pretty=format:"~~~%aI" --since="4 years ago" `
-  | ? { $_ } -PV line <# remove blank lines #>`
+  | ? { $_ } -PV line <# remove blank lines #> `
   | % { <# parse lines #>
       if ($line -match '^~~~') {
         $commitdate = [datetime]($line -replace '^~~~')
-        return
-      }
-      [pscustomobject]@{
-        commitdate = $commitdate
-        filepath = $line
+      } else {
+        [pscustomobject]@{ commitdate = $commitdate; filepath = $line }
       }
     } `
   | group filepath `
   | % { $_.Group | sort commitdate -Desc -Top 1 } `
   | ? { Test-Path -LiteralPath $_.filepath } `
-  | % {
-      $_.filepath
-      (gi -LiteralPath $_.filepath).LastWriteTime = $_.commitdate
-    }
+  | % { (gi -LiteralPath $_.filepath).LastWriteTime = $_.commitdate }
 ###############################################
 
 ###############################################
