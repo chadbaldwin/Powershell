@@ -25,7 +25,7 @@ git log --name-only --pretty=format:'~~~%aI' --since='4 years ago' `
       if ($line -match '^~~~') {
         $commitdate = [datetime]($line -replace '^~~~')
       } else {
-        [pscustomobject]@{ commitdate = $commitdate; filepath = $line }
+        [pscustomobject]@{ commitdate = $commitdate; filepath = ($line.Trim('"') -replace '\\342\\200\\223', '–') }
       }
     } `
   | group filepath `
